@@ -2,7 +2,7 @@ diff --git a/system/core/run-as/run-as.cpp b/system/core/run-as/run-as.cpp
 index b27cfad7c..c2672039a 100644
 --- a/system/core/run-as/run-as.cpp
 +++ b/system/core/run-as/run-as.cpp
-@@ -150,6 +150,12 @@ int main(int argc, char* argv[]) {
+@@ -190,6 +190,12 @@ int main(int argc, char* argv[]) {
      cmd_argv_offset += 2;
    }
  
@@ -15,7 +15,7 @@ index b27cfad7c..c2672039a 100644
    // Retrieve package information from system, switching egid so we can read the file.
    gid_t old_egid = getegid();
    if (setegid(AID_PACKAGE_INFO) == -1) error(1, errno, "setegid(AID_PACKAGE_INFO) failed");
-@@ -173,12 +179,12 @@ int main(int argc, char* argv[]) {
+@@ -222,12 +228,12 @@ int main(int argc, char* argv[]) {
    uid_t userAppId = (AID_USER_OFFSET * userId) + info.uid;
  
    // Reject system packages.
