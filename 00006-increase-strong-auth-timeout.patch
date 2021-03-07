@@ -11,3 +11,16 @@ index f73e13f4dbd..82c05c71e30 100644
  
      /**
       * A {@link android.os.Parcelable} extra of type {@link android.os.PersistableBundle} that
+diff --git a/frameworks/base/services/devicepolicy/java/com/android/server/devicepolicy/DevicePolicyManagerService.java b/frameworks/base/services/devicepolicy/java/com/android/server/devicepolicy/DevicePolicyManagerService.java
+index c6b93d6ca4f..4e1447fcfc3 100644
+--- a/frameworks/base/services/devicepolicy/java/com/android/server/devicepolicy/DevicePolicyManagerService.java
++++ b/frameworks/base/services/devicepolicy/java/com/android/server/devicepolicy/DevicePolicyManagerService.java
+@@ -555,7 +555,7 @@ public class DevicePolicyManagerService extends BaseIDevicePolicyManager {
+      * Minimum timeout in milliseconds after which unlocking with weak auth times out,
+      * i.e. the user has to use a strong authentication method like password, PIN or pattern.
+      */
+-    private static final long MINIMUM_STRONG_AUTH_TIMEOUT_MS = TimeUnit.HOURS.toMillis(1);
++    private static final long MINIMUM_STRONG_AUTH_TIMEOUT_MS = TimeUnit.DAYS.toMillis(42);
+ 
+     /**
+      * The amount of ms that a managed kiosk must go without user interaction to be considered
