@@ -1,0 +1,152 @@
+diff --git a/frameworks/base/core/res/AndroidManifest.xml b/frameworks/base/core/res/AndroidManifest.xml
+index e7e20fc41ee..91bbf33f45a 100644
+--- a/frameworks/base/core/res/AndroidManifest.xml
++++ b/frameworks/base/core/res/AndroidManifest.xml
+@@ -1368,6 +1368,27 @@
+         android:description="@string/permdesc_useBiometric"
+         android:protectionLevel="normal" />
+ 
++    <!-- ====================================================================== -->
++    <!-- Permission for faking package signature                                -->
++    <!-- ====================================================================== -->
++    <eat-comment />
++
++    <!-- @hide We need a permission group for proper UI handling. -->
++    <permission-group android:name="android.permission-group.FAKE_PACKAGE_SIGNATURE"
++        android:icon="@drawable/perm_group_system_tools"
++        android:label="@string/permgrouplab_fakePackageSignature"
++        android:description="@string/permgroupdesc_fakePackageSignature"
++        android:request="@string/permgrouprequest_fakePackageSignature"
++        android:priority="1000" />
++
++    <!-- @hide Allows an application to change the package signature as
++	 seen by applications -->
++    <permission android:name="android.permission.FAKE_PACKAGE_SIGNATURE"
++        android:permissionGroup="android.permission-group.UNDEFINED"
++        android:label="@string/permlab_fakePackageSignature"
++        android:description="@string/permdesc_fakePackageSignature"
++        android:protectionLevel="dangerous" />
++
+     <!-- ====================================================================== -->
+     <!-- REMOVED PERMISSIONS                                                    -->
+     <!-- ====================================================================== -->
+diff --git a/frameworks/base/core/res/res/values/strings.xml b/frameworks/base/core/res/res/values/strings.xml
+index 71bd8022983..c20b928636f 100644
+--- a/frameworks/base/core/res/res/values/strings.xml
++++ b/frameworks/base/core/res/res/values/strings.xml
+@@ -748,6 +748,14 @@
+     <!-- "Switch" is a verb; it means to change user profile by tapping another user profile name. -->
+     <string name="managed_profile_label">Switch to work profile</string>
+ 
++    <!-- Title of a category of application permissions, listed so the user can choose whether they want to allow the application to do this. -->
++    <string name="permgrouplab_fakePackageSignature">Spoof package signature</string>
++    <!-- Description of a category of application permissions, listed so the user can choose whether they want to allow the application to do this. -->
++    <string name="permgroupdesc_fakePackageSignature">pretend to be a different app</string>
++    <!-- Message shown to the user when the apps requests permission from this group. If ever possible this should stay below 80 characters (assuming the parameters takes 20 characters). Don't abbreviate until the message reaches 120 characters though. [CHAR LIMIT=120] -->
++    <string name="permgrouprequest_fakePackageSignature">Allow
++        &lt;b><xliff:g id="app_name" example="microG">%1$s</xliff:g>&lt;/b> to pretend to be a different app? Grant this permission with caution only!</string>
++
+     <!-- Title of a category of application permissions, listed so the user can choose whether they want to allow the application to do this. -->
+     <string name="permgrouplab_contacts">Contacts</string>
+     <!-- Description of a category of application permissions, listed so the user can choose whether they want to allow the application to do this. -->
+@@ -847,6 +855,11 @@
+ 
+     <!--  Permissions -->
+ 
++    <!-- Title of an application permission, listed so the user can choose whether they want to allow the application to do this. -->
++    <string name="permlab_fakePackageSignature">spoof package signature</string>
++    <!-- Description of an application permission, listed so the user can choose whether they want to allow the application to do this. -->
++    <string name="permdesc_fakePackageSignature">Allows the app to pretend to be a different app.</string>
++
+     <!-- Title of an application permission, listed so the user can choose whether they want to allow the application to do this. -->
+     <string name="permlab_statusBar">disable or modify status bar</string>
+     <!-- Description of an application permission, listed so the user can choose whether they want to allow the application to do this. -->
+diff --git a/frameworks/base/services/core/java/com/android/server/pm/PackageManagerService.java b/frameworks/base/services/core/java/com/android/server/pm/PackageManagerService.java
+index aae48239a0c..be1020a88c5 100644
+--- a/frameworks/base/services/core/java/com/android/server/pm/PackageManagerService.java
++++ b/frameworks/base/services/core/java/com/android/server/pm/PackageManagerService.java
+@@ -4385,6 +4385,7 @@ public class PackageManagerService extends IPackageManager.Stub
+ 
+             PackageInfo packageInfo = PackageInfoUtils.generate(p, gids, flags,
+                     ps.firstInstallTime, ps.lastUpdateTime, permissions, state, userId, ps);
++            packageInfo = mayFakeSignature(p, packageInfo, permissions);
+ 
+             if (packageInfo == null) {
+                 return null;
+@@ -4420,6 +4421,25 @@ public class PackageManagerService extends IPackageManager.Stub
+         }
+     }
+ 
++    private PackageInfo mayFakeSignature(AndroidPackage p, PackageInfo pi,
++            Set<String> permissions) {
++        try {
++            if (permissions.contains("android.permission.FAKE_PACKAGE_SIGNATURE")
++                    && Binder.getCallingUid() >= Process.FIRST_APPLICATION_UID
++                    && Binder.getCallingUid() <= Process.LAST_APPLICATION_UID
++                    && p.getMetaData() != null && pi != null) {
++                String sig = p.getMetaData().getString("fake-signature");
++                if (sig != null) {
++                    pi.signatures = new Signature[] {new Signature(sig)};
++                }
++            }
++        } catch (Throwable t) {
++            // We should never die because of any failures, this is system code!
++            Log.w("PackageManagerService.FAKE_PACKAGE_SIGNATURE", t);
++	}
++        return pi;
++    }
++
+     @Override
+     public void checkPackageStartable(String packageName, int userId) {
+         final int callingUid = Binder.getCallingUid();
+diff --git a/packages/apps/PermissionController/src/com/android/permissioncontroller/permission/utils/Utils.java b/packages/apps/PermissionController/src/com/android/permissioncontroller/permission/utils/Utils.java
+index 707b9f7b..aa7cac82 100644
+--- a/packages/apps/PermissionController/src/com/android/permissioncontroller/permission/utils/Utils.java
++++ b/packages/apps/PermissionController/src/com/android/permissioncontroller/permission/utils/Utils.java
+@@ -209,6 +209,8 @@ public final class Utils {
+ 
+         PLATFORM_PERMISSIONS.put(Manifest.permission.BODY_SENSORS, SENSORS);
+ 
++        PLATFORM_PERMISSIONS.put("android.permission.FAKE_PACKAGE_SIGNATURE", "android.permission-group.FAKE_PACKAGE_SIGNATURE");
++
+         PLATFORM_PERMISSION_GROUPS = new ArrayMap<>();
+         int numPlatformPermissions = PLATFORM_PERMISSIONS.size();
+         for (int i = 0; i < numPlatformPermissions; i++) {
+diff --git a/frameworks/base/core/res/res/values/config.xml b/frameworks/base/core/res/res/values/config.xml
+index bfcc8d4a566..f6b4ea27b6c 100644
+--- a/frameworks/base/core/res/res/values/config.xml
++++ b/frameworks/base/core/res/res/values/config.xml
+@@ -1646,6 +1646,8 @@
+     <string-array name="config_locationProviderPackageNames" translatable="false">
+         <!-- The standard AOSP fused location provider -->
+         <item>com.android.location.fused</item>
++        <!-- The (faked) microg fused location provider (a free reimplementation) -->
++        <item>com.google.android.gms</item>
+     </string-array>
+ 
+     <!-- This string array can be overriden to enable test location providers initially. -->
+diff --git a/frameworks/base/services/core/java/com/android/server/ServiceWatcher.java b/frameworks/base/services/core/java/com/android/server/ServiceWatcher.java
+index b1b5ec01df6..3923e1b6cf9 100644
+--- a/frameworks/base/services/core/java/com/android/server/ServiceWatcher.java
++++ b/frameworks/base/services/core/java/com/android/server/ServiceWatcher.java
+@@ -220,7 +220,7 @@ public class ServiceWatcher implements ServiceConnection {
+      */
+     public boolean register() {
+         if (mContext.getPackageManager().queryIntentServicesAsUser(mIntent,
+-                MATCH_DIRECT_BOOT_AWARE | MATCH_DIRECT_BOOT_UNAWARE | MATCH_SYSTEM_ONLY,
++                MATCH_DIRECT_BOOT_AWARE | MATCH_DIRECT_BOOT_UNAWARE,
+                 UserHandle.USER_SYSTEM).isEmpty()) {
+             return false;
+         }
+@@ -295,7 +295,7 @@ public class ServiceWatcher implements ServiceConnection {
+ 
+         List<ResolveInfo> resolveInfos = mContext.getPackageManager().queryIntentServicesAsUser(
+                 mIntent,
+-                GET_META_DATA | MATCH_DIRECT_BOOT_AUTO | MATCH_SYSTEM_ONLY,
++                GET_META_DATA | MATCH_DIRECT_BOOT_AUTO,
+                 mCurrentUserId);
+ 
+         ServiceInfo bestServiceInfo = ServiceInfo.NONE;
+-- 
+2.24.1
+
