@@ -10,5 +10,5 @@ for i in \
 	10000-microg-full.patch \
 	90000-force-run-as.patch
 do
-	patch -p1 --no-backup-if-mismatch vendor/custom/patches/$i
+	patch -p1 --no-backup-if-mismatch < vendor/custom/patches/$i
 done

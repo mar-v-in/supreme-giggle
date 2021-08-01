@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+  <bool name="config_gesture_settings_enabled">true</bool>
+  <string name="config_backup_settings_intent" translatable="false">settings://com.android.settings.backup.transport</string>
+  <string name="config_backup_settings_label" translatable="false">@string/backup_transport_setting_label</string>
+</resources>
