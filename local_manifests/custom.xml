@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+  <remote name="personal-remote" fetch="https://github.com/mar-v-in/" revision="master" />
+  <remote name="seedvault-app" fetch="https://github.com/seedvault-app/" revision="master" />
+
+  <project path="vendor/custom" name="supreme-giggle" remote="personal-remote" />
+  <project path="external/seedvault" name="seedvault" remote="seedvault-app" revision="96ffcc258d1ec0242483052f60067fa69f21ef7e" />
+</manifest>
